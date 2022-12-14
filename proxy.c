@@ -293,37 +293,30 @@ inline int connect_endServer(char *hostname, int port, char *http_header){
 }
 
 /*parse the uri to get hostname,file path ,port*/
-void parse_uri(char *uri,char *hostname,char *path,int *port)
-{
-    *port = 80;
-    // uri에서 "//"의 첫 번째 표시 시작 위치에 대한 포인터를 리턴
-    char* pos = strstr(uri, "//");
+void parse_uri(char *uri, char *hostname, char *path, int *port) {
+  *port = 80;
+  char *pos = strstr(uri, "//");
 
-    pos = pos != NULL? pos+2:uri;
+  pos = pos!=NULL? pos+2:uri;
 
-    char*pos2 = strstr(pos, ":");
-    if(pos2 != NULL)
-    {
-        *pos2 = '\0';
-        sscanf(pos, "%s", hostname);
-        sscanf(pos2+1, "%d%s", port, path);
+  char *pos2 = strstr(pos, ":");
+  // sscanf(pos, "%s", hostname);
+  if (pos2 != NULL) {
+    *pos2 = '\0';
+    sscanf(pos, "%s", hostname);
+    sscanf(pos2+1, "%d%s", port, path);
+  } else {
+    pos2 = strstr(pos, "/");
+    if (pos2 != NULL) {
+      *pos2 = '\0';  // 중간에 끊으려고
+      sscanf(pos, "%s", hostname);
+      *pos2 = '/';
+      sscanf(pos2, "%s", path);
+    } else {
+      scanf(pos, "%s", hostname);
     }
-    else
-    {
-        pos2 = strstr(pos,"/");
-        if(pos2!=NULL)
-        {
-            *pos2 = '\0';
-            sscanf(pos,"%s",hostname);
-            *pos2 = '/';
-            sscanf(pos2,"%s",path);
-        }
-        else
-        {
-            sscanf(pos,"%s",hostname);
-        }
-    }
-    return;
+  }
+  return;
 }
 
 // 캐시 함수 구현
