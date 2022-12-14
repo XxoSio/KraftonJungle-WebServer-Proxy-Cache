@@ -123,8 +123,8 @@ int main(int argc, char **argv)
         clientlen = sizeof(clientaddr);
 
         // 쓰레드 경쟁 상태를 피하기 위한 동적 할당
-        connfd = Malloc(sizeof(int));
-        *connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+//         connfd = Malloc(sizeof(int));
+        connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
 
         // hostname과 portnumber string으로 반환
         Getnameinfo((SA*)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
