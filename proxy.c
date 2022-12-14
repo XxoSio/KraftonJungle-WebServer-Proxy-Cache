@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 /* Thread routine */
 // 쓰레드 함수 정의
 void *thread(void *vargsp){
-    int connfd = *((int *)vargsp);
+    int connfd = (int)vargsp;
 
     Pthread_detach(Pthread_self());
     doit(connfd);
