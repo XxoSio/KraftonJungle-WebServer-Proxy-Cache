@@ -339,9 +339,6 @@ void parse_uri(char *uri,char *hostname,char *path,int *port)
 // 캐시 함수 구현
 // 캐시 초기화
 void cache_init() {
-    // 처음이니까 0으로 설정
-    cache.cache_num = 0;
-
     int i;
     for (i=0; i<CACHE_OBJS_COUNT; i++) {
         // LRU : 우선 순위를 미는 것
