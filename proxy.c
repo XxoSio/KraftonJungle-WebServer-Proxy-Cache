@@ -202,7 +202,7 @@ void doit(int connfd)
 
     /*connect to the end server*/
     // end_serverfd = connect_endServer(hostname, port, endserver_http_header);
-    end_serverfd = connect_endServer(hostname, port);
+    end_serverfd = connect_endServer(hostname, port, endserver_http_header);
     if(end_serverfd < 0) {
         printf("connection failed\n");
         return;
@@ -291,7 +291,7 @@ void build_http_header(char *http_header, char *hostname, char *path, int port, 
 }
 
 /*Connect to the end server*/
-inline int connect_endServer(char *hostname, int port){
+inline int connect_endServer(char *hostname, int port, char *http_header){
     char portStr[100];
     // portstr에 port 넣어주기
     sprintf(portStr, "%d", port);
