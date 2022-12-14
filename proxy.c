@@ -95,7 +95,6 @@ Cache cache;
 
 int main(int argc, char **argv)
 {
-    // malloc을 사용하므로 connfd에 * 추가
     int listenfd, connfd;
 
     socklen_t  clientlen;
