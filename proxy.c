@@ -47,18 +47,11 @@ void *thread(void *vargsp);
 
 // 캐시를 위한 구현 함수들
 void cache_init();
-
-void cache_uri(char *uri, char *buf);
-int cache_eviction();
-
 int cache_find(char *url);
+void cache_uri(char *uri, char *buf);
+
 void readerPre(int i);
 void readerAfter(int i);
-
-void cache_LRU(int index);
-
-void writePre(int i);
-void writeAfter(int i);
 
 // 캐시 블럭 구조체
 typedef struct 
@@ -355,29 +348,58 @@ void cache_init() {
     }
 }
 
-// 캐시에 URI 및 컨텐츠를 저장
-void cache_uri(char *uri, char *buf) {
-    // 가장 처음으로 찾는 빈 캐시 블럭의 인덱스
-    int i = cache_eviction();
-    
-    writePre(i);
+// i = 해당 인덱스
+// 내가 받아온 index오브젝트의 리드카운트 뮤텍스를 비어있는지 확인하고
+// 비었다면 할당 받음
+void readerPre(int i) {
+    // P연산(locking):정상인지 검사, 기다림 - 비정상인 경우 에러 출력
+    P(&cache.cacheobjs[i].rdcntmutex);
+    // rdcntmutex로 특정 readcnt에 접근하고 +1해줌
+    // 원래 0으로 세팅되어있어서, 누가 안쓰고 있으면 0이었다가 1로 되고 if문 들어감
+    cache.cacheobjs[i].readCnt++;
 
-    // 저장해야할 내용을 캐시 블럭에 저장
-    strcpy(cache.cacheobjs[i].cache_obj, buf);
-    strcpy(cache.cacheobjs[i].cache_url, uri);
+    // readerAfter에서 -1 다시 내려주기때문에 0, 1, 0 에서만 움직임
+    if (cache.cacheobjs[i].readCnt == 1)
+        // mutex 뮤텍스를 풀고(캐시에 접근)
+        P(&cache.cacheobjs[i].wmutex);
 
-    // 캐시를 저장하는 것이므로 0으로 비어있지 않음을 표시
-    cache.cacheobjs[i].isEmpty = 0;
-    // 가장 최근에 했으니 우선순위 9999로 설정
-    cache.cacheobjs[i].LRU = LRU_MAGIC_NUMBER;
-
-    // 새로 저장된 블럭의 인덱스 값을 넘겨줌
-    cache_LRU(i);
-
-    writeAfter(i);
+    // V연산 풀기(캐시 해제)
+    V(&cache.cacheobjs[i].rdcntmutex);
 }
 
-// 
+// 할당 받았던 뮤텍스를 다시 풀어주는 함수
+void readerAfter(int i) {
+    P(&cache.cacheobjs[i].rdcntmutex);
+    cache.cacheobjs[i].readCnt--;
+
+    if (cache.cacheobjs[i].readCnt == 0)
+        V(&cache.cacheobjs[i].wmutex);
+
+    V(&cache.cacheobjs[i].rdcntmutex);
+}
+
+// 찾는 캐시가 있는지 찾아보는 함수
+int cache_find(char *url) {
+  int i;
+  
+  // 캐시의 총 개수만큼 돌면서 검사
+  for (i = 0; i < CACHE_OBJS_COUNT; i++) {
+    // 현재 찾는 인덱스의 캐시가 사용중인지 검사후 할당 받음
+    readerPre(i);
+
+    // 해당 인덱스의 캐시가 비어있지 않으면서 찾고있는 url과 같은 url을 가지고 있는 경우
+    if (cache.cacheobjs[i].isEmpty == 0 && strcmp(url, cache.cacheobjs[i].cache_url) == 0) {
+        // 할당 받았던 캐시를 풀어주고
+        readerAfter(i);
+        // 찾은 인덱스 반환
+        return i;
+    }
+    readerAfter(i);
+  }
+  // 찾고 있는 내용이 캐시에 없으므로 -1 반환
+  return -1;
+}
+
 int cache_eviction() {
     // 제일 마지막에 들어오는 들어오는 캐시이므로 LRU_MAGIC_NUMBER인 9999 할당
     int min = LRU_MAGIC_NUMBER;
@@ -424,36 +446,6 @@ void writeAfter(int i) {
     V(&cache.cacheobjs[i].wmutex);
 }
 
-// i = 해당 인덱스
-// 내가 받아온 index오브젝트의 리드카운트 뮤텍스를 비어있는지 확인하고
-// 비었다면 할당 받음
-void readerPre(int i) {
-    // P연산(locking):정상인지 검사, 기다림 - 비정상인 경우 에러 출력
-    P(&cache.cacheobjs[i].rdcntmutex);
-    // rdcntmutex로 특정 readcnt에 접근하고 +1해줌
-    // 원래 0으로 세팅되어있어서, 누가 안쓰고 있으면 0이었다가 1로 되고 if문 들어감
-    cache.cacheobjs[i].readCnt++;
-
-    // readerAfter에서 -1 다시 내려주기때문에 0, 1, 0 에서만 움직임
-    if (cache.cacheobjs[i].readCnt == 1)
-        // mutex 뮤텍스를 풀고(캐시에 접근)
-        P(&cache.cacheobjs[i].wmutex);
-
-    // V연산 풀기(캐시 해제)
-    V(&cache.cacheobjs[i].rdcntmutex);
-}
-
-// 할당 받았던 뮤텍스를 다시 풀어주는 함수
-void readerAfter(int i) {
-    P(&cache.cacheobjs[i].rdcntmutex);
-    cache.cacheobjs[i].readCnt--;
-
-    if (cache.cacheobjs[i].readCnt == 0)
-        V(&cache.cacheobjs[i].wmutex);
-
-    V(&cache.cacheobjs[i].rdcntmutex);
-}
-
 void cache_LRU(int index) {
     int i;
     for (i = 0; i < CACHE_OBJS_COUNT; i++) {
@@ -475,24 +467,24 @@ void cache_LRU(int index) {
     }
 }
 
-// 찾는 캐시가 있는지 찾아보는 함수
-int cache_find(char *url) {
-  int i;
-  
-  // 캐시의 총 개수만큼 돌면서 검사
-  for (i = 0; i < CACHE_OBJS_COUNT; i++) {
-    // 현재 찾는 인덱스의 캐시가 사용중인지 검사후 할당 받음
-    readerPre(i);
+// 캐시에 URI 및 컨텐츠를 저장
+void cache_uri(char *uri, char *buf) {
+    // 가장 처음으로 찾는 빈 캐시 블럭의 인덱스
+    int i = cache_eviction();
+    
+    writePre(i);
 
-    // 해당 인덱스의 캐시가 비어있지 않으면서 찾고있는 url과 같은 url을 가지고 있는 경우
-    if (cache.cacheobjs[i].isEmpty == 0 && strcmp(url, cache.cacheobjs[i].cache_url) == 0) {
-        // 할당 받았던 캐시를 풀어주고
-        readerAfter(i);
-        // 찾은 인덱스 반환
-        return i;
-    }
-    readerAfter(i);
-  }
-  // 찾고 있는 내용이 캐시에 없으므로 -1 반환
-  return -1;
+    // 저장해야할 내용을 캐시 블럭에 저장
+    strcpy(cache.cacheobjs[i].cache_obj, buf);
+    strcpy(cache.cacheobjs[i].cache_url, uri);
+
+    // 캐시를 저장하는 것이므로 0으로 비어있지 않음을 표시
+    cache.cacheobjs[i].isEmpty = 0;
+    // 가장 최근에 했으니 우선순위 9999로 설정
+    cache.cacheobjs[i].LRU = LRU_MAGIC_NUMBER;
+
+    // 새로 저장된 블럭의 인덱스 값을 넘겨줌
+    cache_LRU(i);
+
+    writeAfter(i);
 }
