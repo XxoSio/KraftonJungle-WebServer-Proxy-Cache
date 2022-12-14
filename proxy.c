@@ -265,9 +265,9 @@ void build_http_header(char *http_header, char *hostname, char *path, int port, 
         }
 
         // host header 이외의 header 만들어주기
-        if(!strncasecmp(buf, connection_key, strlen(connection_key))
-                &&!strncasecmp(buf, proxy_connection_key, strlen(proxy_connection_key))
-                &&!strncasecmp(buf, user_agent_key, strlen(user_agent_key)))
+        if(strncasecmp(buf, connection_key, strlen(connection_key))
+                &&strncasecmp(buf, proxy_connection_key, strlen(proxy_connection_key))
+                &&strncasecmp(buf, user_agent_key, strlen(user_agent_key)))
         {
             strcat(other_hdr, buf);
         }
@@ -308,7 +308,7 @@ void parse_uri(char *uri, char *hostname, char *path, int *port) {
   } else {
     pos2 = strstr(pos, "/");
     if (pos2 != NULL) {
-      *pos2 = '\0';  // 중간에 끊으려고
+      *pos2 = '\0';
       sscanf(pos, "%s", hostname);
       *pos2 = '/';
       sscanf(pos2, "%s", path);
