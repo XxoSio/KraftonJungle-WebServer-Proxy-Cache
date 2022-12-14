@@ -28,11 +28,11 @@ void doit(int connfd);
 // parsing the uri that client requests
 void parse_uri(char *uri,char *hostname, char *path, int *port);
 void build_http_header(char *http_header, char *hostname, char *path, int port, rio_t *client_rio);
-// int connect_endServer(char *hostname, int port, char *http_header);
-int connect_endServer(char *hostname, int port);
+int connect_endServer(char *hostname, int port, char *http_header);
+// int connect_endServer(char *hostname, int port);
 
 // 쓰레드 함수 선언
-void *thread(void *vargp);
+void *thread(void *vargsp);
 
 /* 프록시 구현 과정
     1. 클라이언트와의 fd를 클라이언트용 rio에 연결(Rio_readinitb)함
@@ -142,15 +142,13 @@ int main(int argc, char **argv)
 
 /* Thread routine */
 // 쓰레드 함수 정의
-void *thread(void *vargp){
-    int connfd = *((int *)vargp);
+void *thread(void *vargsp){
+    int connfd = *((int *)vargsp);
 
-    doit(connfd);
     Pthread_detach(Pthread_self());
+    doit(connfd);
 
     Close(connfd);
-
-    return NULL;
 }
 
 void doit(int connfd)
