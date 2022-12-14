@@ -252,7 +252,7 @@ void parse_uri(char *uri, char *hostname, char *path, int *port) {
 }
 
 void cache_init() {
-  cache.cache_num = 0; // 맨 처음이니까
+//   cache.cache_num = 0; // 맨 처음이니까
   int i;
   for (i=0; i<CACHE_OBJS_COUNT; i++) {
     cache.cacheobjs[i].LRU = 0; // LRU : 우선 순위를 미는 것. 처음이니까 0
