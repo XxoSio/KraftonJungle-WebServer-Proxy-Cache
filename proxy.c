@@ -96,6 +96,9 @@ int main(int argc, char **argv)
     struct sockaddr_storage clientaddr;/*generic sockaddr struct which is 28 Bytes.The same use as sockaddr*/
 
     pthread_t tid;
+    
+    // 캐시 함수 초기화
+    cache_init(); 
 
     // port number가 argument로 입력되지 않은 경우 error반환
     if(argc != 2){
@@ -135,13 +138,11 @@ int main(int argc, char **argv)
 
 /* Thread routine */
 // 쓰레드 함수 정의
-void *thread(void *vargsp){
-    int connfd = (int)vargsp;
-
-    Pthread_detach(Pthread_self());
-    doit(connfd);
-
-    Close(connfd);
+void *thread(void *vargsp) {
+  int connfd = (int)vargsp;
+  Pthread_detach(pthread_self());
+  doit(connfd);
+  Close(connfd);
 }
 
 void doit(int connfd)
@@ -265,14 +266,13 @@ void build_http_header(char *http_header, char *hostname, char *path, int port, 
         }
 
         // host header 이외의 header 만들어주기
-        if(strncasecmp(buf, connection_key, strlen(connection_key))
-                &&strncasecmp(buf, proxy_connection_key, strlen(proxy_connection_key))
-                &&strncasecmp(buf, user_agent_key, strlen(user_agent_key)))
-        {
+        if (strncasecmp(buf, connection_key, strlen(connection_key))
+            &&strncasecmp(buf, proxy_connection_key, strlen(proxy_connection_key))
+            &&strncasecmp(buf, user_agent_key, strlen(user_agent_key))) {
             strcat(other_hdr, buf);
         }
     }
-
+    
     // request header에 host header가 없다면 hostname으로 만들어주기
     if(strlen(host_hdr) == 0)
     {
